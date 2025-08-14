@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语词汇测试（可靠发音版）</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f7;
+            color: #333;
+        }
+        h1 {
+            color: #0066cc;
+            margin-bottom: 30px;
+        }
+        .word-display {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 30px 0 10px;
+            min-height: 50px;
+            color: #1a1a1a;
+        }
+        .pos-display {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            flex: 1;
+            max-width: 200px;
+        }
+        button:hover {
+            background-color: #004d99;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .counter {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .status {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .pulse {
+            animation: pulse 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>英语词汇测试</h1>
+        <div class="word-display" id="wordDisplay">点击下方按钮开始</div>
+        <div class="pos-display" id="posDisplay"></div>
+        <div class="buttons">
+            <button id="randomButton">随机单词</button>
+            <button id="speakButton" disabled>发音</button>
+        </div>
+        <div class="counter" id="counter">词汇总数: 60</div>
+        <div class="status" id="status">正在初始化语音服务...</div>
+    </div>
+
+    <script>
+        // 词汇列表
+        const vocabularyList = [
+            ["ancient", "adj."],
+            ["camp", "n."],
+            ["landscape", "n."],
+            ["strange", "adj."],
+            ["vacation", "n."],
+            ["fantastic", "adj."],
+            ["town", "n."],
+            ["breath", "n."],
+            ["especially", "adv."],
+            ["anywhere", "adv."],
+            ["nothing", "n."],
+            ["silk", "n."],
+            ["scarf", "n."],
+            ["hotel", "n."],
+            ["ready", "adj./adv."],
+            ["somewhere", "adv."],
+            ["sky", "n."],
+            ["bored", "adj."],
+            ["towards", "prep."],
+            ["rainbow", "n."],
+            ["square", "n."],
+            ["during", "prep."],
+            ["victory", "n."],
+            ["fight", "n."],
+            ["against", "prep."],
+            ["guide", "n."],
+            ["remind", "v."],
+            ["easily", "adv."],
+            ["sick", "adj."],
+            ["station", "n."],
+            ["palace", "n."],
+            ["accordion", "n."],
+            ["tower", "n."],
+            ["might", "v."],
+            ["budget", "n."],
+            ["passport", "n."],
+            ["forgetful", "adj."],
+            ["countryside", "n."],
+            ["surprised", "adj."],
+            ["probably", "adv."],
+            ["pack", "v."],
+            ["bathroom", "n."],
+            ["invite", "v."],
+            ["balcony", "n."],
+            ["arrival", "n."],
+            ["add", "v."],
+            ["biscuit", "n."],
+            ["borrow", "v."],
+            ["treasure", "n."],
+            ["hunt", "v."],
+            ["lift", "v."],
+            ["until", "prep."],
+            ["dead", "adj."],
+            ["note", "n."],
+            ["community", "n."],
+            ["rubbish", "n."],
+            ["journey", "n."],
+            ["pull", "v."],
+            ["luggage", "n."],
+            ["familiar", "adj."],
+            ["joke", "n."],
+            ["several", "adj."],
+            ["nod", "v."],
+            ["writer", "n."],
+            ["text", "n."],
+            ["describe", "v."],
+            ["wherever", "adv."],
+            ["matter", "n./v."],
+            ["perhaps", "adv."],
+            ["plate", "n."],
+            ["freshly", "adv."],
+            ["smell", "v."],
+            ["joy", "n."],
+            ["apartment", "n."],
+            ["block", "n."],
+            ["cover", "v."],
+            ["scissors", "n."],
+            ["glue", "n."]
+        ];
+
+        // DOM元素
+        const wordDisplay = document.getElementById('wordDisplay');
+        const posDisplay = document.getElementById('posDisplay');
+        const randomButton = document.getElementById('randomButton');
+        const speakButton = document.getElementById('speakButton');
+        const counter = document.getElementById('counter');
+        const statusEl = document.getElementById('status');
+        
+        // 状态变量
+        let currentWord = '';
+        let lastIndex = -1;
+        let speechSynthesis = window.speechSynthesis;
+        let voices = [];
+        let voiceReady = false;
+
+        // 初始化语音
+        function initSpeech() {
+            statusEl.textContent = "正在加载语音服务...";
+            statusEl.className = "status";
+            
+            // 检查浏览器支持
+            if (!speechSynthesis) {
+                showError("您的浏览器不支持语音合成API，请使用Chrome、Edge或Safari");
+                return;
+            }
+            
+            // 某些浏览器需要这个事件来加载语音
+            speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        }
+
+        // 加载可用语音
+        function loadVoices() {
+            voices = speechSynthesis.getVoices();
+            
+            if (voices.length === 0) {
+                setTimeout(loadVoices, 100);
+                return;
+            }
+            
+            // 检查是否有英语语音
+            const englishVoices = voices.filter(v => v.lang.includes('en'));
+            if (englishVoices.length === 0) {
+                showError("未找到英语语音包，请安装系统语音");
+                return;
+            }
+            
+            voiceReady = true;
+            statusEl.textContent = "✓ 语音服务已就绪";
+            statusEl.className = "status success";
+            speakButton.disabled = false;
+        }
+
+        // 显示错误
+        function showError(message) {
+            statusEl.textContent = "⚠️ " + message;
+            statusEl.className = "status error";
+            speakButton.disabled = true;
+        }
+
+        // 获取随机单词
+        function getRandomWord() {
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * vocabularyList.length);
+            } while (newIndex === lastIndex && vocabularyList.length > 1);
+            
+            lastIndex = newIndex;
+            return vocabularyList[newIndex];
+        }
+
+        // 发音函数
+        function speakWord() {
+            if (!currentWord || !voiceReady) return;
+            
+            speechSynthesis.cancel(); // 取消当前正在播放的
+            
+            const utterance = new SpeechSynthesisUtterance(currentWord);
+            utterance.rate = 0.9;
+            
+            // 选择最佳语音
+            const englishVoices = voices.filter(v => v.lang.includes('en'));
+            const usVoice = englishVoices.find(v => v.lang.includes('US')) || englishVoices[0];
+            utterance.voice = usVoice;
+            
+            // 视觉反馈
+            wordDisplay.classList.add('pulse');
+            utterance.onend = () => wordDisplay.classList.remove('pulse');
+            
+            speechSynthesis.speak(utterance);
+        }
+
+        // 随机单词按钮点击
+        randomButton.addEventListener('click', () => {
+            const [word, pos] = getRandomWord();
+            currentWord = word;
+            wordDisplay.textContent = word;
+            wordDisplay.style.color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 45%)`;
+            posDisplay.textContent = pos;
+            
+            if (voiceReady) {
+                setTimeout(speakWord, 300);
+            }
+        });
+
+        // 发音按钮点击
+        speakButton.addEventListener('click', speakWord);
+
+        // 显示词汇总数
+        counter.textContent = `词汇总数: ${vocabularyList.length}`;
+
+        // 初始化
+        initSpeech();
+    </script>
+</body>
+</html>
